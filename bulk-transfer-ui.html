@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MAR ERC20 Bulk Transfer</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/9.1.2/bignumber.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.3.0/dist/web3.min.js"></script>
+  </head>
+  <body class="bg-gray-200">
+    <header class="bg-black p-4">
+      <div class="container mx-auto flex">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          id="logo"
+          width="40"
+          height="40"
+          viewBox="0 0 225.722 225.722"
+        >
+          <g transform="translate(-592 -468)">
+            <g id="logo" transform="translate(592 468)">
+              <path
+                d="M0,112.861A112.861,112.861,0,1,1,112.861,225.722,112.859,112.859,0,0,1,0,112.861Z"
+                fill="#0099bf"
+                fill-rule="evenodd"
+              ></path>
+              <path
+                d="M110.006,168.927v22.41H91.916V209.7h18.09v14.85H91.916v18.36h18.09v41.04H136.2v-57.54l38.34,54.84,38.34-54.84v57.54h26.19v-41.04h18.09v-18.36h-18.09V209.7h18.09v-18.36h-18.09v-22.41H220.553l-46.4,65.864L128.52,168.927Z"
+                transform="translate(-61.946 -113.847)"
+                fill="#fff"
+                fill-rule="evenodd"
+              ></path>
+            </g>
+          </g>
+        </svg>
+        <h1 class="text-3xl ml-4 text-white">Bulk Transfer</h1>
+        <div class="ml-auto flex items-center space-x-2">
+          <label for="useTestnet" class="text-white text-sm"
+            >Use Testnet:</label
+          >
+          <input
+            type="checkbox"
+            id="useTestnet"
+            onchange="toggleNetwork()"
+            class="form-checkbox h-5 w-5 text-blue-600 rounded border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+          />
+        </div>
+      </div>
+    </header>
+
+    <div class="container mx-auto p-12">
+      <!-- Metamask Address, Connected Network & Token Balance -->
+      <div id="accountInfo" class="mb-4"></div>
+      <div id="networkInfo" class="mb-4"></div>
+      <div id="tokenBalance" class="mb-4"></div>
+
+      <div class="mb-4">
+        <label
+          for="tokenAddress"
+          class="block text-sm font-medium text-gray-700"
+          >Token Address:</label
+        >
+        <select
+          id="tokenAddress"
+          class="mt-1 p-2 w-full rounded-md border"
+          onchange="switchNetwork()"
+        >
+          <option value="" selected disabled>Select a token</option>
+        </select>
+      </div>
+
+      <div class="mb-4">
+        <label for="csvData" class="block text-sm font-medium text-gray-700">
+          CSV Data:
+        </label>
+        <textarea
+          id="csvData"
+          rows="15"
+          class="mt-1 p-2 w-full rounded-md border"
+        ></textarea>
+        <small class="block text-sm text-gray-600">
+          CSV Format: address,amount (ex. 0x...,100.12345678)
+        </small>
+      </div>
+
+      <div class="pb-20">
+        <button
+          id="approveButton"
+          onclick="approveAllowance()"
+          class="bg-black text-white p-2 rounded-3xl px-4 mr-4 hover:bg-gray-700"
+          disabled
+        >
+          Approve Allowance
+        </button>
+        <button
+          id="transferButton"
+          onclick="performBulkTransfer()"
+          class="bg-green-700 text-white p-2 rounded-3xl px-4 hover:bg-green-600"
+          disabled
+        >
+          Perform Bulk Transfer
+        </button>
+      </div>
+    </div>
+    <script>
+      const networksParams = {
+        5: {
+          chainId: '0x5',
+          chainName: 'Goerli',
+          nativeCurrency: {
+            name: 'ETH',
+            symbol: 'ETH',
+            decimals: 18,
+          },
+          rpcUrls: ['wss://ethereum-goerli.publicnode.com/'],
+          blockExplorerUrls: ['https://goerli.etherscan.io/'],
+        },
+        1101: {
+          chainId: '0x44d',
+          chainName: 'Polygon zkEVM',
+          nativeCurrency: {
+            name: 'ETH',
+            symbol: 'ETH',
+            decimals: 18,
+          },
+          rpcUrls: ['https://1rpc.io/polygon/zkevm'],
+          blockExplorerUrls: ['https://zkevm.polygonscan.com/'],
+        },
+        1442: {
+          chainId: '0x5a2',
+          chainName: 'zkEVM Testnet',
+          nativeCurrency: {
+            name: 'ETH',
+            symbol: 'ETH',
+            decimals: 18,
+          },
+          rpcUrls: ['https://rpc.public.zkevm-test.net/'],
+          blockExplorerUrls: ['https://testnet-zkevm.polygonscan.com/'],
+        },
+      };
+
+      const mainnetContracts = {
+        Ethereum: {
+          chainId: 1,
+          tokenAddress: '0x4343d80ef5808490a079aa0907ffdc9373c7a4dd',
+          airdropAddress: '0x4343d80ef5808490a079aa0907ffdc9373c7a4dd',
+        },
+        'Polygon zkEVM': {
+          chainId: 1101,
+          tokenAddress: '0x88940e23eaf2e7077d86a89fc0d3a69fcdf9d4c6',
+          airdropAddress: '0x4343D80eF5808490a079AA0907FFdC9373C7a4Dd',
+        },
+      };
+
+      const testnetContracts = {
+        'Goerli Testnet': {
+          chainId: 5,
+          tokenAddress: '0x4343d80ef5808490a079aa0907ffdc9373c7a4dd',
+          airdropAddress: '0x4343d80ef5808490a079aa0907ffdc9373c7a4dd',
+        },
+        'zkEVM Testnet': {
+          chainId: 1442,
+          tokenAddress: '0x6891af56d293983ED505344657D83AE1954a2e24',
+          airdropAddress: '0x4343D80eF5808490a079AA0907FFdC9373C7a4Dd',
+        },
+      };
+
+      const tokenAbi = [
+        {
+          inputs: [
+            {
+              internalType: 'address',
+              name: 'spender',
+              type: 'address',
+            },
+            {
+              internalType: 'uint256',
+              name: 'amount',
+              type: 'uint256',
+            },
+          ],
+          name: 'approve',
+          outputs: [
+            {
+              internalType: 'bool',
+              name: '',
+              type: 'bool',
+            },
+          ],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+        {
+          inputs: [
+            {
+              internalType: 'address',
+              name: 'account',
+              type: 'address',
+            },
+          ],
+          name: 'balanceOf',
+          outputs: [
+            {
+              internalType: 'uint256',
+              name: '',
+              type: 'uint256',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'symbol',
+          outputs: [
+            {
+              internalType: 'string',
+              name: '',
+              type: 'string',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+        {
+          inputs: [],
+          name: 'decimals',
+          outputs: [
+            {
+              internalType: 'uint8',
+              name: '',
+              type: 'uint8',
+            },
+          ],
+          stateMutability: 'view',
+          type: 'function',
+        },
+      ];
+
+      const airdropAbi = [
+        {
+          inputs: [
+            {
+              internalType: 'address[]',
+              name: 'recipients',
+              type: 'address[]',
+            },
+            {
+              internalType: 'uint256[]',
+              name: 'amounts',
+              type: 'uint256[]',
+            },
+          ],
+          name: 'bulkTransfer',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function',
+        },
+      ];
+
+      let useTestnet = false;
+      let chainsContracts = useTestnet ? testnetContracts : mainnetContracts;
+      let currentChainId, tokenDecimals, tokenSymbol;
+
+      function fromWei(amountInWei, decimals) {
+        const divisor = new BigNumber(10).pow(new BigNumber(decimals));
+        return new BigNumber(amountInWei).dividedBy(divisor);
+      }
+
+      function toWei(amount, decimals) {
+        const multiplier = new BigNumber(10).pow(new BigNumber(decimals));
+        return new BigNumber(amount).multipliedBy(multiplier);
+      }
+
+      function toggleButtonState(buttonId, isEnabled) {
+        const button = document.getElementById(buttonId);
+        if (isEnabled) {
+          button.removeAttribute('disabled');
+        } else {
+          button.setAttribute('disabled', 'disabled');
+        }
+      }
+
+      function enableButtons() {
+        toggleButtonState('approveButton', true);
+        toggleButtonState('transferButton', true);
+      }
+
+      function disableButtons() {
+        toggleButtonState('approveButton', false);
+        toggleButtonState('transferButton', false);
+      }
+
+      function fillContractOptions() {
+        const selectElement = document.getElementById('tokenAddress');
+        selectElement.selectedIndex = 0;
+
+        while (selectElement.options.length > 1) {
+          selectElement.remove(1);
+        }
+
+        for (const network in chainsContracts) {
+          if (chainsContracts.hasOwnProperty(network)) {
+            const option = document.createElement('option');
+            const tokenAddress = chainsContracts[network].tokenAddress;
+            option.value = tokenAddress;
+            option.text = `${network} - ${tokenAddress}`;
+            option.setAttribute('data-network', network);
+            selectElement.add(option);
+          }
+        }
+      }
+
+      function getSelectedNetwork() {
+        return document
+          .getElementById('tokenAddress')
+          .selectedOptions[0].getAttribute('data-network');
+      }
+
+      function getSelectedNetworkContracts() {
+        return chainsContracts[getSelectedNetwork()];
+      }
+
+      function getExpectedChainId() {
+        return getSelectedNetworkContracts().chainId;
+      }
+
+      function isExpectedChain() {
+        return currentChainId === getExpectedChainId();
+      }
+
+      function checkChainId() {
+        if (!isExpectedChain()) {
+          alert(`Please connect to the correct network.`);
+          return false;
+        }
+        return true;
+      }
+
+      function getContracts() {
+        const { tokenAddress, airdropAddress } = getSelectedNetworkContracts();
+
+        const tokenContract = new web3.eth.Contract(tokenAbi, tokenAddress);
+        const airdropContract = new web3.eth.Contract(
+          airdropAbi,
+          airdropAddress
+        );
+
+        return { tokenContract, airdropContract, tokenAddress, airdropAddress };
+      }
+
+      function toggleInterface() {
+        const csvData = document.getElementById('csvData').value;
+        if (isExpectedChain() && csvData.trim() !== '') {
+          enableButtons();
+        } else {
+          disableButtons();
+        }
+      }
+
+      function toggleNetwork() {
+        useTestnet = document.getElementById('useTestnet').checked;
+        chainsContracts = useTestnet ? testnetContracts : mainnetContracts;
+        fillContractOptions();
+        updateNetworkInfo();
+        getAccountInfo();
+      }
+
+      async function selectNetworkIfConnected() {
+        const selectElement = document.getElementById('tokenAddress');
+        for (let i = 0; i < selectElement.options.length; i++) {
+          const network = selectElement.options[i].getAttribute('data-network');
+          if (chainsContracts[network]) {
+            const chainId = chainsContracts[network].chainId;
+            if (chainId === currentChainId) {
+              selectElement.selectedIndex = i;
+              break;
+            }
+          }
+        }
+      }
+
+      async function updateNetworkInfo() {
+        currentChainId = await web3.eth.getChainId();
+        let networkName = 'Unknown Network';
+
+        for (const network in chainsContracts) {
+          if (chainsContracts[network].chainId === currentChainId) {
+            networkName = network;
+            break;
+          }
+        }
+
+        document.getElementById(
+          'networkInfo'
+        ).innerText = `Connected to: ${networkName} (Chain ID: ${currentChainId})`;
+      }
+
+      async function switchNetwork() {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x' + getExpectedChainId().toString(16) }],
+          });
+        } catch (error) {
+          console.error(error);
+
+          if (error.code === 4902) {
+            alert(
+              'The selected network is not added to your MetaMask. Attempting to add the network...'
+            );
+            await addNetwork();
+          } else if (error.code === 4001) {
+            alert('Network switch cancelled by user.');
+          } else {
+            alert(`Failed to switch network: ${error.message}`);
+          }
+        }
+      }
+
+      async function requestAccount() {
+        const accounts = await window.ethereum.request({
+          method: 'eth_requestAccounts',
+        });
+        return accounts[0];
+      }
+
+      async function getAccountInfo() {
+        const account = await requestAccount();
+        if (!account) return;
+
+        document.getElementById(
+          'accountInfo'
+        ).innerText = `Connected Metamask Address: ${account}`;
+
+        const tokenAddress = document.getElementById('tokenAddress').value;
+        if (tokenAddress) {
+          const contract = new web3.eth.Contract(tokenAbi, tokenAddress);
+
+          tokenDecimals = await contract.methods.decimals().call();
+          tokenSymbol = await contract.methods.symbol().call();
+
+          const balance = await contract.methods.balanceOf(account).call();
+          const balanceInEther = fromWei(balance, tokenDecimals);
+
+          document.getElementById(
+            'tokenBalance'
+          ).innerText = `Token Balance: ${balanceInEther} ${tokenSymbol}`;
+        }
+      }
+
+      async function addNetwork() {
+        const networkParams = networksParams[getExpectedChainId()];
+
+        if (!networkParams) {
+          alert('Network parameters not found.');
+          return;
+        }
+
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [networkParams],
+          });
+        } catch (error) {
+          console.error(error);
+          alert(`Failed to add network: ${error.message}`);
+        }
+      }
+
+      async function checkAndAddNetwork() {
+        if (!isExpectedChain()) {
+          const networkName = getSelectedNetwork();
+          const networkParams = networksParams[expectedChainId];
+
+          if (!networkParams) {
+            console.error(`Network params for ${networkName} not found.`);
+            return;
+          }
+
+          try {
+            await addNetwork();
+          } catch (error) {
+            console.error(error);
+            alert(`Failed to add ${networkName} network.`);
+          }
+        }
+      }
+
+      function processCSV() {
+        let totalAmount = new BigNumber(0);
+
+        const recipients = [];
+        const amounts = [];
+
+        const rows = document.getElementById('csvData').value.split('\n');
+
+        for (let i = 0; i < rows.length; i++) {
+          const [address, amount] = rows[i].split(',');
+
+          if (!web3.utils.isAddress(address)) {
+            alert(`The address on line ${i + 1} is not valid.`);
+            return;
+          }
+
+          if (isNaN(amount) || Number(amount) <= 0) {
+            alert(`The amount on line ${i + 1} is not valid.`);
+            return;
+          }
+
+          recipients.push(address);
+          const amountInWei = toWei(amount, tokenDecimals);
+          amounts.push(web3.utils.toBN(amountInWei.toFixed(0)));
+          totalAmount = totalAmount.plus(amountInWei);
+        }
+
+        console.log(`Total amount in Wei: ${totalAmount.toFixed(0)}`);
+
+        return { totalAmount, recipients, amounts };
+      }
+
+      async function approveAllowance() {
+        if (!checkChainId()) return;
+
+        const { tokenContract, airdropAddress } = getContracts();
+        const { totalAmount } = processCSV();
+
+        try {
+          const account = await requestAccount();
+          await tokenContract.methods
+            .approve(airdropAddress, web3.utils.toBN(totalAmount.toFixed(0)))
+            .send({ from: account });
+          alert('Allowance approved');
+        } catch (err) {
+          alert(
+            `An error occurred while approving the allowance: ${
+              err.message || err
+            }`
+          );
+          console.error(err);
+        }
+      }
+
+      async function performBulkTransfer() {
+        if (!checkChainId()) return;
+
+        const { airdropContract } = getContracts();
+        const { recipients, amounts } = processCSV();
+
+        try {
+          const account = await requestAccount();
+          await airdropContract.methods
+            .bulkTransfer(recipients, amounts)
+            .send({ from: account });
+          alert('Bulk transfer completed');
+        } catch (err) {
+          alert(`An error occurred: ${err.message || err}`);
+          console.error(err);
+        }
+      }
+
+      async function init() {
+        document.getElementById('useTestnet').checked = useTestnet;
+
+        await fillContractOptions();
+
+        if (window.ethereum || window.web3) {
+          if (window.ethereum) {
+            window.web3 = new Web3(window.ethereum);
+
+            window.ethereum.on('accountsChanged', getAccountInfo);
+            window.ethereum.on('chainChanged', async () => {
+              await updateNetworkInfo();
+
+              if (isExpectedChain()) {
+                getAccountInfo();
+                toggleInterface();
+              } else {
+                disableButtons();
+                alert('You are connected to the wrong network.');
+                await checkAndAddNetwork();
+              }
+            });
+          } else {
+            window.web3 = new Web3(window.web3.currentProvider);
+            alert('Please consider installing MetaMask!');
+          }
+          await updateNetworkInfo();
+          await selectNetworkIfConnected();
+          await getAccountInfo();
+        } else {
+          alert(
+            'Non-Ethereum browser detected. You should consider trying MetaMask!'
+          );
+        }
+      }
+
+      document
+        .getElementById('csvData')
+        .addEventListener('input', toggleInterface);
+
+      document.addEventListener('DOMContentLoaded', init);
+    </script>
+  </body>
+</html>
