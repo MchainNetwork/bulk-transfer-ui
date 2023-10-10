@@ -124,6 +124,28 @@
           rpcUrls: ['wss://ethereum-goerli.publicnode.com/'],
           blockExplorerUrls: ['https://goerli.etherscan.io/'],
         },
+        137: {
+          chainId: '0x89',
+          chainName: 'Polygon POS',
+          nativeCurrency: {
+            name: 'MATIC',
+            symbol: 'MATIC',
+            decimals: 18,
+          },
+          rpcUrls: ['https://polygon-bor.publicnode.com/'],
+          blockExplorerUrls: ['https://polygonscan.com/'],
+        },
+        80001: {
+          chainId: '0x13881',
+          chainName: 'Mumbai',
+          nativeCurrency: {
+            name: 'MATIC',
+            symbol: 'MATIC',
+            decimals: 18,
+          },
+          rpcUrls: ['https://polygon-mumbai-bor.publicnode.com/'],
+          blockExplorerUrls: ['https://mumbai.polygonscan.com/'],
+        },
         1101: {
           chainId: '0x44d',
           chainName: 'Polygon zkEVM',
@@ -151,12 +173,17 @@
       const mainnetContracts = {
         Ethereum: {
           chainId: 1,
-          tokenAddress: '0x4343d80ef5808490a079aa0907ffdc9373c7a4dd',
-          airdropAddress: '0x4343d80ef5808490a079aa0907ffdc9373c7a4dd',
+          tokenAddress: '0x4343D80eF5808490a079AA0907FFdC9373C7a4Dd',
+          airdropAddress: '0x4343D80eF5808490a079AA0907FFdC9373C7a4Dd',
+        },
+        'Polygon POS': {
+          chainId: 137,
+          tokenAddress: '0x3Ad33b55740e4E3A7073ac32e7467bb3A566Ea8d',
+          airdropAddress: '0x4343D80eF5808490a079AA0907FFdC9373C7a4Dd',
         },
         'Polygon zkEVM': {
           chainId: 1101,
-          tokenAddress: '0x88940e23eaf2e7077d86a89fc0d3a69fcdf9d4c6',
+          tokenAddress: '0x88940E23Eaf2e7077d86a89fC0d3a69fcDF9d4C6',
           airdropAddress: '0x4343D80eF5808490a079AA0907FFdC9373C7a4Dd',
         },
       };
@@ -164,8 +191,13 @@
       const testnetContracts = {
         'Goerli Testnet': {
           chainId: 5,
-          tokenAddress: '0x4343d80ef5808490a079aa0907ffdc9373c7a4dd',
-          airdropAddress: '0x4343d80ef5808490a079aa0907ffdc9373c7a4dd',
+          tokenAddress: '0x4343D80eF5808490a079AA0907FFdC9373C7a4Dd',
+          airdropAddress: '0x4343D80eF5808490a079AA0907FFdC9373C7a4Dd',
+        },
+        'Mumbai Testnet': {
+          chainId: 80001,
+          tokenAddress: '0xF0F65D18c59da5Ed05f8F5b97bCadA933CB4e054',
+          airdropAddress: '0x4343D80eF5808490a079AA0907FFdC9373C7a4Dd',
         },
         'zkEVM Testnet': {
           chainId: 1442,
@@ -562,6 +594,7 @@
             .bulkTransfer(recipients, amounts)
             .send({ from: account });
           alert('Bulk transfer completed');
+          getAccountInfo();
         } catch (err) {
           alert(`An error occurred: ${err.message || err}`);
           console.error(err);
