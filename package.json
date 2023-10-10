@@ -1,7 +1,7 @@
 {
   "name": "bulk-transfer-ui",
   "version": "0.1.0",
-  "description": "Simple UI and a server for handling bulk transfers of MAR ERC20 tokens on Etherum or Polygon zkEVM blockchains.",
+  "description": "Simple UI and a server for handling bulk transfers of MAR ERC20 tokens on Etherum, Polygon PoS or Polygon zkEVM blockchains.",
   "scripts": {
     "start": "node server.js"
   },

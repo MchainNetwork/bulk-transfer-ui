@@ -1,6 +1,6 @@
 # Bulk Transfer UI and Server
 
-This repository contains a simple UI and a server for handling bulk transfers of MAR ERC20 tokens using the Ethereum blockchain and Polygon zkEVM. It provides a user-friendly way to send tokens to multiple recipients in one go, directly from your browser, with the help of Metamask.
+This repository contains a simple UI and a server for handling bulk transfers of MAR ERC20 tokens using the Ethereum blockchain, Polygon PoS and Polygon zkEVM. It provides a user-friendly way to send tokens to multiple recipients in one go, directly from your browser, with the help of Metamask.
 
 # Screenshot
 
@@ -17,7 +17,7 @@ This repository contains a simple UI and a server for handling bulk transfers of
 ### Prerequisites
 
 - Node.js and npm installed on your system
-- Metamask browser extension installed for interacting with the Ethereum blockchain and Polygon zkEVM
+- Metamask browser extension installed for interacting with the Ethereum blockchain, Polygon PoS and Polygon zkEVM
 
 ### Installation
 
@@ -46,7 +46,7 @@ This repository contains a simple UI and a server for handling bulk transfers of
 
 2. Interact with the Bulk Transfer UI in the browser.
 
-3. Use Metamask to approve and submit transactions to the Ethereum or Polygon zkEVM blockchain.
+3. Use Metamask to approve and submit transactions to the Ethereum, Polygon PoS or Polygon zkEVM blockchain.
 
 ## Usage
 
